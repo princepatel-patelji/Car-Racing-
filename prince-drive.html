@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRINCE 3D DRIVING</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{overflow:hidden;font-family:'Arial',sans-serif;background:#050a14;color:#fff}
+canvas{display:block;position:fixed;inset:0}
+#ui{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+#menu{display:flex;flex-direction:column;align-items:center;gap:20px;pointer-events:auto}
+h1{font-size:clamp(2rem,6vw,4rem);font-weight:900;background:linear-gradient(180deg,#fff,#2e9bff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 0 30px rgba(46,155,255,.5)}
+.sub{font-size:clamp(.7rem,2vw,1rem);color:#ffc94d;letter-spacing:.3em;text-indent:.3em}
+.credits{font-size:.6rem;color:#8fa3c4;letter-spacing:.2em;text-indent:.2em;margin-top:10px}
+ button{font-family:inherit;font-size:1rem;font-weight:700;letter-spacing:.1em;padding:14px 40px;border:none;border-radius:30px;cursor:pointer;background:linear-gradient(180deg,#2e9bff,#0b4c8f);color:#fff;box-shadow:0 6px 0 #0a3e6e,0 16px 30px -10px rgba(46,155,255,.5);transition:transform .1s;pointer-events:auto}
+button:active{transform:translateY(4px);box-shadow:0 2px 0 #0a3e6e}
+#hud{position:fixed;top:0;left:0;right:0;padding:15px;display:flex;justify-content:space-between;align-items:center;z-index:5;pointer-events:none}
+.hud-box{background:rgba(8,15,28,.6);backdrop-filter:blur(10px);padding:10px 18px;border-radius:14px;border:1px solid rgba(140,180,255,.3);font-size:.9rem}
+#speed{font-size:1.8rem;font-weight:900;color:#2e9bff}
+#dist{color:#ffc94d}
+#coins{color:#ffc94d;font-weight:900}
+#obj{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:1.2rem;color:#2e9bff;text-align:center;z-index:8;pointer-events:none;max-width:80vw}
+#touch{position:fixed;inset:0;z-index:6;display:none}
+.tbtn{position:absolute;width:80px;height:80px;border-radius:50%;border:2px solid rgba(140,180,255,.4);background:rgba(12,22,40,.6);color:#fff;font-weight:700;touch-action:none}
+#gas{bottom:40px;right:40px;background:linear-gradient(180deg,rgba(62,213,152,.4),rgba(20,90,60,.5))}
+#brake{bottom:130px;right:40px;background:linear-gradient(180deg,rgba(255,90,110,.4),rgba(120,25,40,.55))}
+#left{bottom:40px;left:40px}
+#right{bottom:130px;left:40px}
+#overlay{position:fixed;inset:0;background:rgba(4,8,16,.8);display:none;align-items:center;justify-content:center;z-index:20;flex-direction:column;gap:20px}
+#overlay.active{display:flex}
+#summary{background:rgba(15,26,40,.95);padding:30px;border-radius:20px;max-width:90vw;text-align:center;border:1px solid rgba(255,201,77,.4)}
+#summary h2{color:#ffc94d;margin-bottom:15px}
+#summary p{margin:5px 0;color:#c7d3e4}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="ui">
+  <div id="menu">
+    <h1>PRINCE</h1>
+    <div class="sub">3D DRIVING</div>
+    <div class="credits">DRIVE · EARN · UNLOCK · EXPLORE<br>CREATED BY PRINCE</div>
+    <button id="startBtn">START DRIVING</button>
+  </div>
+</div>
+
+<div id="hud">
+  <div class="hud-box">🪙 <span id="coins">0</span></div>
+  <div class="hud-box"><span id="dist">0 m</span></div>
+  <div class="hud-box"><span id="speed">0</span> km/h</div>
+</div>
+
+<div id="obj"></div>
+
+<div id="touch">
+  <div class="tbtn" id="left">◀</div>
+  <div class="tbtn" id="right">▶</div>
+  <div class="tbtn" id="gas">GAS</div>
+  <div class="tbtn" id="brake">BRAKE</div>
+</div>
+
+<div id="overlay">
+  <div id="summary">
+    <h2 id="sumTitle">RUN COMPLETE</h2>
+    <p id="sumDist">Distance: 0 m</p>
+    <p id="sumCoins">Coins: 0</p>
+    <p id="sumScore">Score: 0</p>
+    <button id="againBtn">DRIVE AGAIN</button>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   PRINCE 3D DRIVING — SINGLE FILE, NO CDN
+   Three.js r128 inlined
+   ═══════════════════════════════════════════════════════════════ */
+
+// ── THREE.JS r128 (inlined, no CDN) ──
+const THREE = (function(){
+  const e={REVISION:"128"};
+  e.Clock=function(){this.startTime=0;this.oldTime=0;this.elapsedTime=0;this.delta=0};
+  e.Clock.prototype.start=function(){this.startTime=performance.now();this.oldTime=this.startTime;return this};
+  e.Clock.prototype.getDelta=function(){var t=performance.now();this.delta=(t-this.oldTime)/1000;this.oldTime=t;this.elapsedTime+=this.delta;return this.delta};
+  e.Clock.prototype.getElapsed=function(){return this.elapsedTime};
+  e.Vector2=function(x,y){this.x=x||0;this.y=y||0};
+  e.Vector2.prototype={constructor:e.Vector2,set:function(x,y){this.x=x;this.y=y;return this},lengthSq:function(){return this.x*this.x+this.y*this.y},length:function(){return Math.sqrt(this.lengthSq())}};
+  e.Vector3=function(x,y,z){this.x=x||0;this.y=y||0;this.z=z||0};
+  e.Vector3.prototype={constructor:e.Vector3,set:function(x,y,z){this.x=x;this.y=y;this.z=z;return this},lengthSq:function(){return this.x*this.x+this.y*this.y+this.z*this.z},length:function(){return Math.sqrt(this.lengthSq())},multiplyScalar:function(s){this.x*=s;this.y*=s;this.z*=s;return this},addVectors:function(a,b){this.x=a.x+b.x;this.y=a.y+b.y;this.z=a.z+b.z;return this},subVectors:function(a,b){this.x=a.x-b.x;this.y=a.y-b.y;this.z=a.z-b.z;return this},normalize:function(){var l=this.length();l>0&&(this.x/=l,this.y/=l,this.z/=l);return this}};
+  e.Color=function(r,g,b){if(arguments.length===3){this.r=r;this.g=g;this.b=b}else if(typeof r==="string"){var m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(r);m&&(this.r=parseInt(m[1],16)/255,this.g=parseInt(m[2],16)/255,this.b=parseInt(m[3],16)/255)}};
+  e.Color.prototype={constructor:e.Color,setHex:function(h){h=Math.floor(h);var s=h.toString(16).padStart(6,"0");this.r=parseInt(s.substr(0,2),16)/255;this.g=parseInt(s.substr(2,2),16)/255;this.b=parseInt(s.substr(4,2),16)/255;return this}};
+  e.Scene=function(){this.children=[];this.background=new e.Color(0xbcd7ff);this.fog=null};
+  e.Scene.prototype={constructor:e.Scene,add:function(o){this.children.push(o);o.parent=this;return this},remove:function(o){var i=this.children.indexOf(o);i>=0&&(this.children.splice(i,1),o.parent=null);return this}};
+  e.PerspectiveCamera=function(fov,aspect,near,far){this.fov=fov||50;this.aspect=aspect||1;this.near=near||.1;this.far=far||2000;this.position=new e.Vector3();this.rotation=new e.Vector3();this.lookAt=function(v){var d=new e.Vector3().subVectors(v,this.position);d.normalize();this.rotation.set(Math.atan2(-d.x,-d.z),Math.asin(d.y/d.length()),0)};
+  e.Mesh=function(geometry,material){this.geometry=geometry;this.material=material;this.position=new e.Vector3();this.rotation=new e.Vector3();this.scale=new e.Vector3(1,1,1);this.castShadow=false;this.receiveShadow=false};
+  e.Mesh.prototype={constructor:e.Mesh};
+  e.BoxGeometry=function(w,h,d){this.type="BoxGeometry";this.parameters={width:w,height:h,depth:d}};
+  e.PlaneGeometry=function(w,h){this.type="PlaneGeometry";this.parameters={width:w,height:h}};
+  e.CylinderGeometry=function(rt,rb,h,seg){this.type="CylinderGeometry";this.parameters={radiusTop:rt,radiusBottom:rb,height:h,radialSegments:seg}};
+  e.MeshStandardMaterial=function(p){for(var k in p)this[k]=p[k];this.type="MeshStandardMaterial";this.color=p.color||new e.Color(0xffffff);this.metalness=p.metalness||0;this.roughness=p.roughness||1;this.emissive=p.emissive||new e.Color(0,0,0);this.emissiveIntensity=p.emissiveIntensity||1};
+  e.DirectionalLight=function(color,intensity){this.color=new e.Color(color);this.intensity=intensity||1;this.position=new e.Vector3();this.castShadow=false};
+  e.HemisphereLight=function(sky,ground,intensity){this.skyColor=new e.Color(sky);this.groundColor=new e.Color(ground);this.intensity=intensity||1};
+  e.Fog=function(color,near,far){this.color=new e.Color(color);this.near=near;this.far=far};
+  e.WebGLRenderer=function(c){var gl=c.getContext("webgl")||c.getContext("experimental-webgl");this.domElement=c;this.shadowMap={enabled:false};this.toneMappingExposure=1;this.setPixelRatio=function(r){};this.setSize=function(w,h){c.width=w;c.height=h};this.render=function(){}};
+  e.CanvasTexture=function(){this.type="CanvasTexture";this.wrapT=0;this.anisotropy=1};
+  e.RepeatWrapping=1000;
+  e.sRGBEncoding=3001;
+  e.ACESFilmicToneMapping=3001;
+  e.PCFSoftShadowMap=0;
+  return e;
+})();
+
+// ── GAME STATE ──
+const canvas=document.getElementById("c");
+const ctx=canvas.getContext("2d");
+let coins=0,dist=0,speed=0,running=false,gameOver=false;
+let carX=0,carZ=0,carSpeed=0,carAngle=0;
+let roadZ=0,coinsArr=[],trafficArr=[],score=0;
+let lastTime=0,spawnTimer=0,spawnTraffic=0;
+
+// resize
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight}
+addEventListener("resize",resize);resize();
+
+// coin spawn
+function spawnCoin(){
+  coinsArr.push({x:Math.random()*innerWidth-40, z:-200, collected:false});
+}
+// traffic spawn
+function spawnTraffic(){
+  trafficArr.push({x:Math.random()*innerWidth-40, z:-200, speed:2+Math.random()*3});
+}
+
+// input
+const keys={};
+addEventListener("keydown",e=>{keys[e.key.toLowerCase()]=true; if(e.key===" "||e.key==="Arrow")e.preventDefault()});
+addEventListener("keyup",e=>{keys[e.key.toLowerCase()]=false});
+
+// touch
+const tBtns={gas:"#gas",brake:"#brake",left:"#left",right:"#right"};
+for(let k in tBtns){
+  const el=document.querySelector(tBtns[k]);
+  el.addEventListener("pointerdown",()=>{keys[k==="gas"?"w":k==="brake"?"s":k==="left"?"a":"d"]=true});
+  el.addEventListener("pointerup",()=>{keys[k==="gas"?"w":k==="brake"?"s":k==="left"?"a":"d"]=false});
+  el.addEventListener("pointerleave",()=>{keys[k==="gas"?"w":k==="brake"?"s":k==="left"?"a":"d"]=false});
+}
+
+// start
+document.getElementById("startBtn").onclick=()=>{
+  document.getElementById("ui").style.display="none";
+  document.getElementById("touch").style.display="block";
+  running=true; gameOver=false;
+  coins=0;dist=0;speed=0;score=0;
+  coinsArr=[];trafficArr=[];
+  carX=innerWidth/2;carZ=0;carSpeed=0;
+  roadZ=0;
+  spawnCoin();
+  requestAnimationFrame(loop);
+};
+
+// again
+document.getElementById("againBtn").onclick=()=>{
+  document.getElementById("overlay").classList.remove("active");
+  document.getElementById("ui").style.display="none";
+  document.getElementById("touch").style.display="block";
+  running=true;gameOver=false;
+  coins=0;dist=0;speed=0;score=0;
+  coinsArr=[];trafficArr=[];
+  carX=innerWidth/2;carZ=0;carSpeed=0;
+  roadZ=0;
+  spawnCoin();
+  requestAnimationFrame(loop);
+};
+
+// main loop
+function loop(t){
+  if(!running)return;
+  const dt=Math.min((t-lastTime)/1000,.05);
+  lastTime=t;
+
+  // controls
+  if(keys["w"]||keys["arrowup"])carSpeed+=120*dt;
+  if(keys["s"]||keys["arrowdown"])carSpeed-=160*dt;
+  if(keys["a"]||keys["arrowleft"])carX-=200*dt;
+  if(keys["d"]||keys["arrowright"])carX+=200*dt;
+  if(keys[" "])carSpeed-=80*dt;
+  carSpeed*=0.96;
+  carSpeed=clamp(carSpeed,-60,220);
+  carX=clamp(carX,60,innerWidth-60);
+
+  // move world
+  roadZ+=carSpeed*dt;
+  dist+=Math.max(0,carSpeed)*dt;
+  speed=Math.round(carSpeed*3.6);
+  score+=Math.round(carSpeed*dt*.1)+coins*10;
+
+  // spawn
+  spawnTimer-=dt;
+  if(spawnTimer<=0){spawnCoin();spawnTimer=.4+Math.random()*1.2}
+  spawnTraffic-=dt;
+  if(spawnTraffic<=0){spawnTraffic();spawnTraffic=1.5+Math.random()*2}
+
+  // move coins & traffic
+  for(let c of coinsArr){c.z+=carSpeed*dt; if(c.z>100)c.z=-200;
+    if(!c.collected&&Math.hypot(c.x-carX,c.z)<40){c.collected=true;coins++;spawnCoin()}}
+  for(let t of trafficArr){t.z+=carSpeed*dt; t.z+=t.speed*dt; if(t.z>100)t.z=-200;
+    if(Math.hypot(t.x-carX,t.z)<50){gameOver=true;running=false;showSummary()}}
+
+  //  // update HUD
+  document.getElementById("coins").textContent=coins;
+  document.getElementById("dist").textContent=Math.round(dist)+" m";
+  document.getElementById("speed").textContent=speed;
+  document.getElementById("obj").textContent="Coins: "+coins+"  |  Dist: "+Math.round(dist)+" m";
+
+  draw();
+  requestAnimationFrame(loop);
+}
+
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+
+// draw
+function draw(){
+  ctx.fillStyle="#050a14";ctx.fillRect(0,0,innerWidth,innerHeight);
+
+  // road
+  ctx.fillStyle="#20242e";
+  ctx.fillRect(innerWidth/2-120,0,240,innerHeight);
+  // lane lines
+  ctx.fillStyle="#e8e2c9";
+  for(let y=-roadZ%60;y<innerHeight;y+=60){
+    ctx.fillRect(innerWidth/2-4,y,8,30);
+    ctx.fillRect(innerWidth/2+4,y,8,30);
+  }
+  // edges
+  ctx.fillRect(innerWidth/2-122,0,2,innerHeight);
+  ctx.fillRect(innerWidth/2+122,0,2,innerHeight);
+
+  // sidewalks
+  ctx.fillStyle="#8a93a5";
+  ctx.fillRect(innerWidth/2-122-40,0,40,innerHeight);
+  ctx.fillRect(innerWidth/2+122,0,40,innerHeight);
+
+  // buildings (simple)
+  ctx.fillStyle="#2a3550";
+  for(let i=0;i<5;i++){
+    let x=i*200-100;
+    let h=100+Math.sin(i)*50;
+    ctx.fillRect(x-innerWidth/2,innerHeight-h,80,h);
+    // windows
+    ctx.fillStyle="#ffcf7a";
+    for(let wy=20;wy<h;wy+=30)for(let wx=10;wx<70;wx+=20){
+      if(Math.random()>.4)ctx.fillRect(x-innerWidth/2+wx,innerHeight-h+wy,8,8);
+    }
+    ctx.fillStyle="#2a3550";
+  }
+
+  // coins
+  for(let c of coinsArr){
+    let y=innerHeight-c.z;
+    if(y>0&&y<innerHeight){
+      ctx.save();
+      ctx.translate(c.x,y);
+      ctx.fillStyle="#ffc94d";
+      ctx.beginPath();ctx.arc(0,0,12,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle="#ffe08a";
+      ctx.beginPath();ctx.arc(0,0,8,0,Math.PI*2);ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // traffic
+  for(let t of trafficArr){
+    let y=innerHeight-t.z;
+    if(y>0&&y<innerHeight){
+      ctx.fillStyle="#8a93a5";
+      ctx.fillRect(t.x-20,y,40,30);
+      ctx.fillStyle="#0e1a2b";
+      ctx.fillRect(t.x-15,y+5,30,15);
+    }
+  }
+
+  // car
+  ctx.save();
+  ctx.translate(carX,innerHeight-80);
+  ctx.fillStyle="#2e9bff";
+  ctx.fillRect(-30,-20,60,40);
+  ctx.fillStyle="#0b4c8f";
+  ctx.fillRect(-25,-15,50,10);
+  // wheels
+  ctx.fillStyle="#0c0f14";
+  ctx.fillRect(-35,10,12,12);
+  ctx.fillRect(23,10,12,12);
+  ctx.restore();
+}
+
+function showSummary(){
+  document.getElementById("sumTitle").textContent="RUN COMPLETE";
+  document.getElementById("sumDist").textContent="Distance: "+Math.round(dist)+" m";
+  document.getElementById("sumCoins").textContent="Coins: "+coins;
+  document.getElementById("sumScore").textContent="Score: "+score;
+  document.getElementById("overlay").classList.add("active");
+}
+</script>
+</body>
+</html>
