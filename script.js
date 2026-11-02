@@ -1,10 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
    PRINCE 3D DRIVING — script.js
    Drive. Earn. Unlock. Explore.  ·  Created by Prince.
-   ─────────────────────────────────────────────────────────────
-   PART 1 : DATA · SAVE SYSTEM · AUDIO
-   PART 2 : THREE.JS 3D ENGINE (cars, world, traffic, coins, physics)
-   PART 3 : UI, GARAGE, PROFILE, CONTROLS, INIT
    ════════════════════════════════════════════════════════════════ */
 'use strict';
 
@@ -33,52 +29,32 @@ const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = se
 
 const IS_TOUCH = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
-/* ══════════════════════ 2. GAME DATA (static) ═════════════════ */
-
-/* 6 unique vehicles — `model` drives the procedural 3D builder */
+/* ══════════════════════ 2. GAME DATA ══════════════════════ */
 const CAR_DATA = [
-  {
-    id: 'hatch', name: 'Starter Hatchback', price: 0,
-    stats: { speed: 55, acc: 12, hand: 8 },
-    color: '#2E9BFF',
+  { id: 'hatch', name: 'Starter Hatchback', price: 0,
+    stats: { speed: 55, acc: 12, hand: 8 }, color: '#2E9BFF',
     model: { type: 'hatch', len: 3.6, wid: 1.75, hgt: 1.35, roof: 0.62, spoiler: false, wheels: 'std' },
-    blurb: 'Nayi shuruaat. Fast learning curve, zero price tag.'
-  },
-  {
-    id: 'sedan', name: 'City Sedan', price: 500,
-    stats: { speed: 70, acc: 14, hand: 7 },
-    color: '#C7D3E4',
+    blurb: 'Nayi shuruaat.' },
+  { id: 'sedan', name: 'City Sedan', price: 500,
+    stats: { speed: 70, acc: 14, hand: 7 }, color: '#C7D3E4',
     model: { type: 'sedan', len: 4.5, wid: 1.8, hgt: 1.45, roof: 0.66, spoiler: false, wheels: 'std' },
-    blurb: 'City traffic ka king. Smooth, stable, classy.'
-  },
-  {
-    id: 'coupe', name: 'Sports Coupe', price: 1200,
-    stats: { speed: 90, acc: 18, hand: 8 },
-    color: '#E8425A',
+    blurb: 'City traffic ka king.' },
+  { id: 'coupe', name: 'Sports Coupe', price: 1200,
+    stats: { speed: 90, acc: 18, hand: 8 }, color: '#E8425A',
     model: { type: 'coupe', len: 4.2, wid: 1.85, hgt: 1.2, roof: 0.5, spoiler: true, wheels: 'alloy' },
-    blurb: 'Low silhouette, punchy acceleration, tailwind attitude.'
-  },
-  {
-    id: 'suv', name: 'Premium SUV', price: 2000,
-    stats: { speed: 78, acc: 15, hand: 6 },
-    color: '#2F6B4F',
+    blurb: 'Low silhouette, punchy acceleration.' },
+  { id: 'suv', name: 'Premium SUV', price: 2000,
+    stats: { speed: 78, acc: 15, hand: 6 }, color: '#2F6B4F',
     model: { type: 'suv', len: 4.6, wid: 1.9, hgt: 1.8, roof: 0.85, spoiler: false, wheels: 'alloy' },
-    blurb: 'Heavy, high, unbothered. Traffic aapko bother nahi kar sakta.'
-  },
-  {
-    id: 'super', name: 'Supercar', price: 4000,
-    stats: { speed: 120, acc: 22, hand: 9 },
-    color: '#FFC94D',
+    blurb: 'Heavy, high, unbothered.' },
+  { id: 'super', name: 'Supercar', price: 4000,
+    stats: { speed: 120, acc: 22, hand: 9 }, color: '#FFC94D',
     model: { type: 'supercar', len: 4.4, wid: 2.0, hgt: 1.1, roof: 0.42, spoiler: true, wheels: 'turbo' },
-    blurb: 'Mid-engine thunder. Headlights down, necks up.'
-  },
-  {
-    id: 'hyper', name: 'Hypercar', price: 8000,
-    stats: { speed: 150, acc: 26, hand: 10 },
-    color: '#7B5BE6',
+    blurb: 'Mid-engine thunder.' },
+  { id: 'hyper', name: 'Hypercar', price: 8000,
+    stats: { speed: 150, acc: 26, hand: 10 }, color: '#7B5BE6',
     model: { type: 'hypercar', len: 4.7, wid: 2.1, hgt: 1.0, roof: 0.36, spoiler: true, wheels: 'turbo' },
-    blurb: 'Final form. Physics ke laws ko bas suggestion deta hai.'
-  }
+    blurb: 'Final form.' }
 ];
 const carById = (id) => CAR_DATA.find((c) => c.id === id) || CAR_DATA[0];
 
@@ -98,12 +74,10 @@ const WHEEL_STYLES = [
   { id: 'alloy', name: 'Alloy' },
   { id: 'turbo', name: 'Turbo' }
 ];
-const FINISH_PRICE = 150;
-const WHEEL_PRICE  = 250;
+const FINISH_PRICE = 150, WHEEL_PRICE = 250;
 
-/* Driving modes & missions — har mission ki completion real condition se detect hoti hai */
 const MODES = [
-  { id: 'free',  name: 'FREE DRIVE',         ico: '🌆', desc: 'Bina tension drive karo. Coins collect karo.',           reward: 0,   goal: {} },
+  { id: 'free',  name: 'FREE DRIVE',         ico: '🏙️', desc: 'Bina tension drive karo. Coins collect karo.',           reward: 0,   goal: {} },
   { id: 'city',  name: 'CITY DRIVE',         ico: '🏙️', desc: '1,500 m traffic ke beech, bina crash.',                  reward: 250, goal: { dist: 1500, noCrash: true } },
   { id: 'coin',  name: 'COIN CHALLENGE',     ico: '🪙', desc: '90 seconds me 40 coins pakdo.',                          reward: 400, goal: { coins: 40, time: 90 } },
   { id: 'park',  name: 'PARKING CHALLENGE',  ico: '🅿️', desc: 'Car ko marked parking bay me park karo.',                reward: 350, goal: { park: true } },
@@ -114,7 +88,6 @@ const MODES = [
 ];
 const modeById = (id) => MODES.find((m) => m.id === id) || MODES[0];
 
-/* Achievements — sirf jab condition ASLI me puri ho tab unlock */
 const ACH = [
   { id: 'first_drive',    ico: '🏁', name: 'First Drive',         desc: 'Apna pehla run complete karo' },
   { id: 'coin_100',       ico: '🪙', name: 'Coin Collector',      desc: 'Total 100 coins kamao' },
@@ -128,8 +101,7 @@ const ACH = [
 ];
 const achById = (id) => ACH.find((a) => a.id === id);
 
-/* Optional player profile options */
-const AVATARS = ['🏎️','🚗','🚙','🚓','🚕','🛻','🏁','🎮','👑','⚡','🔥','🦅'];
+const AVATARS = ['🏎️','🚗','🚙','🚕','🛻','🏁','🎮','👑','⚡','🔥','🦅'];
 const BANNERS = [
   'linear-gradient(120deg,#0B1526,#123A6B,#2E9BFF)',
   'linear-gradient(120deg,#1A0B26,#4B1B6B,#7B5BE6)',
@@ -139,33 +111,25 @@ const BANNERS = [
   'linear-gradient(120deg,#101820,#2A3A4A,#C7D3E4)'
 ];
 
-/* Daily challenges — locally stored date se seed hoti hain, koi internet nahi */
 const DAILY_CHALLENGES = [
   { id: 'dc_coins',  desc: 'Aaj 25 coins collect karo',   goal: { coins: 25 },            reward: 200 },
   { id: 'dc_dist',   desc: 'Aaj 2,000 m drive karo',      goal: { dist: 2000 },           reward: 200 },
   { id: 'dc_safe',   desc: 'Aaj 500 m bina ek bhi crash', goal: { dist: 500, noCrash: true }, reward: 250 }
 ];
 
-/* ══════════════ 3. SAVE SYSTEM (versioned localStorage) ══════════════ */
+/* ══════════════ 3. SAVE SYSTEM ══════════════ */
 const SAVE_VERSION = 1;
 const SAVE_KEY = 'prince3ddrive_save';
 
 function defaultSave() {
   return {
-    v: SAVE_VERSION,
-    coins: 0,
-    lifetimeCoins: 0,
-    ownedCars: ['hatch'],
-    selectedCar: 'hatch',
-    custom: {},                      // carId -> { paint, finish, wheels }
-    unlockedFinishes: ['glossy'],
-    unlockedWheels: ['std'],
+    v: SAVE_VERSION, coins: 0, lifetimeCoins: 0,
+    ownedCars: ['hatch'], selectedCar: 'hatch',
+    custom: {}, unlockedFinishes: ['glossy'], unlockedWheels: ['std'],
     settings: { quality: 'high', timeOfDay: 'day', sound: true, volume: 0.7, cam: 1, ctrl: 1, steer: 1 },
     stats: { distance: 0, sessions: 0, bestScore: 0, crashes: 0, parks: 0 },
-    completedMissions: {},           // modeId -> true
-    history: [],                     // last 50 sessions
-    achievements: [],                // unlocked ids
-    profile: null,                   // { name, pid, avatar, banner, favCar, favColor } | null
+    completedMissions: {}, history: [], achievements: [],
+    profile: null,
     daily: { date: '', claimed: false, coins: 0, dist: 0, crashed: false }
   };
 }
@@ -186,7 +150,6 @@ function migrateSave(d) {
   if (typeof out.coins !== 'number' || isNaN(out.coins)) out.coins = 0;
   if (typeof out.lifetimeCoins !== 'number' || isNaN(out.lifetimeCoins)) out.lifetimeCoins = Math.max(0, out.coins);
   if (!CAR_DATA.some((c) => c.id === out.selectedCar)) out.selectedCar = 'hatch';
-  // Future versions: per-version migration steps here, e.g. if (out.v < 2) { ... }
   out.v = SAVE_VERSION;
   return out;
 }
@@ -210,27 +173,12 @@ const Save = {
   save() { this._write(); },
   saveNow() {
     clearTimeout(this._write._t);
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); }
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(Save.data)); }
     catch (e) { console.warn('Could not save:', e); }
   },
-  reset() {
-    this.data = defaultSave();
-    this.saveNow();
-  },
-  /* Coins sirf real gameplay se badhte hain */
-  earnCoins(n) {
-    if (n > 0) {
-      this.data.coins += n;
-      this.data.lifetimeCoins += n;
-    }
-    this.save();
-  },
-  spendCoins(n) {
-    if (this.data.coins < n) return false;
-    this.data.coins -= n;
-    this.save();
-    return true;
-  },
+  reset() { this.data = defaultSave(); this.saveNow(); },
+  earnCoins(n) { if (n > 0) { this.data.coins += n; this.data.lifetimeCoins += n; } this.save(); },
+  spendCoins(n) { if (this.data.coins < n) return false; this.data.coins -= n; this.save(); return true; },
   historyPush(entry) {
     this.data.history.unshift(entry);
     if (this.data.history.length > 50) this.data.history.length = 50;
@@ -239,19 +187,14 @@ const Save = {
   hasAch(id) { return this.data.achievements.includes(id); },
   unlockAch(id) {
     if (this.hasAch(id)) return false;
-    this.data.achievements.push(id);
-    this.save();
-    return true;
+    this.data.achievements.push(id); this.save(); return true;
   }
 };
 
-/* Flush save on tab hide/close — progress kabhi na khoya jaye */
 window.addEventListener('beforeunload', () => Save.saveNow());
 document.addEventListener('visibilitychange', () => { if (document.hidden) Save.saveNow(); });
 
-/* ══════════════════════ 4. AUDIO ENGINE (WebAudio) ══════════════════════
-   Synthesized SFX — koi audio file nahi chahiye.
-   Audio PEHLE user interaction se pehle start nahi hota (browser policy). */
+/* ══════════════════════ 4. AUDIO ENGINE ══════════════════════ */
 const AUDIO = (() => {
   let ctx = null, master = null;
   let engGain = null, engFilter = null, engOsc1 = null, engOsc2 = null;
@@ -268,7 +211,6 @@ const AUDIO = (() => {
     master.gain.setTargetAtTime(s.sound ? s.volume * 0.9 : 0, ctx.currentTime, 0.05);
   }
 
-  /* First tap/click par context unlock — isse pehle kuch nahi bajega */
   function unlock() {
     if (ctx) { ok(); return; }
     try {
@@ -310,9 +252,7 @@ const AUDIO = (() => {
   }
 
   return {
-    unlock,
-    applyMaster,
-    /* ── Engine: 2 detuned saws + lowpass, speed se frequency ── */
+    unlock, applyMaster,
     startEngine() {
       if (!ok() || engineOn) return;
       engOsc1 = ctx.createOscillator(); engOsc1.type = 'sawtooth'; engOsc1.frequency.value = 55;
@@ -346,7 +286,6 @@ const AUDIO = (() => {
       if (!engineOn || !engGain) return;
       engGain.gain.setTargetAtTime(on ? 0.01 : 0, ctx.currentTime, 0.05);
     },
-    /* ── One-shot SFX ── */
     click()    { blip(620, 0.05, 'square', 0.12); },
     select()   { blip(440, 0.07, 'triangle', 0.16); blip(660, 0.09, 'triangle', 0.12, 0.05); },
     coin()     { blip(880, 0.09, 'sine', 0.22); blip(1318, 0.14, 'sine', 0.18, 0.06); },
@@ -358,24 +297,20 @@ const AUDIO = (() => {
   };
 })();
 
-/* Pehli user interaction par audio unlock (browser autoplay policy) */
 (function bindAudioUnlock() {
   const once = () => { AUDIO.unlock(); document.removeEventListener('pointerdown', once); document.removeEventListener('keydown', once); };
   document.addEventListener('pointerdown', once);
   document.addEventListener('keydown', once);
 })();
-/* ════════════════════════════════════════════════════════════════
-   PART 2 : THREE.JS 3D ENGINE
-   scene · procedural cars · endless city · traffic · coins · physics
-   ════════════════════════════════════════════════════════════════ */
 
+/* ══════════════════════════ 5. THREE.JS 3D ENGINE ══════════════════════════ */
 const Game = {
   input: { gas: false, brake: false, left: false, right: false, hb: false },
   running: false, paused: false,
   mode: null,
   car: carById('hatch'),
-  onFrame: null,        // PART 3 sets -> HUD
-  onRunComplete: null,  // PART 3 sets -> summary + save
+  onFrame: null,
+  onRunComplete: null,
   onCoin: null,
   onCrash: null
 };
@@ -389,7 +324,7 @@ const Engine = (() => {
 
   let scene, camera, renderer, clock;
   let hemi, sun, ground, fog;
-  let player = null;                 // { group, rollGroups, steerGroups, car }
+  let player = null;
   let chunks = [], CHUNK = 60;
   let coinPool = [], trafficPool = [];
   let bay = null, gate = null;
@@ -400,18 +335,16 @@ const Engine = (() => {
   let shake = 0;
   let raf = 0;
 
-  const ROAD_HALF = 10;              // asphalt half width
-  const BOUND = 8.4;                 // drivable x clamp
-  const LANE_X = [-6, -2, 2, 6];     // 4 lanes
+  const ROAD_HALF = 10;
+  const BOUND = 8.4;
+  const LANE_X = [-6, -2, 2, 6];
 
-  /* ─────────────────── small helpers ─────────────────── */
   function std(color, opt = {}) {
     return new THREE.MeshStandardMaterial(Object.assign({ color, metalness: 0.2, roughness: 0.7 }, opt));
   }
   function box(w, h, d, mat) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.castShadow = quality !== 'low'; return m; }
   function cyl(rt, rb, h, seg, mat) { const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat); m.castShadow = quality !== 'low'; return m; }
 
-  /* ─────────────────── canvas textures (procedural, no files) ─────────────────── */
   function makeRoadTexture() {
     const c = document.createElement('canvas'); c.width = c.height = 256;
     const g = c.getContext('2d');
@@ -419,7 +352,7 @@ const Engine = (() => {
     for (let i = 0; i < 500; i++) { g.fillStyle = 'rgba(255,255,255,' + (Math.random() * 0.03) + ')'; g.fillRect(Math.random() * 256, Math.random() * 256, 2, 2); }
     const px = (x) => ((x + 10) / 20) * 256;
     g.fillStyle = '#e8e2c9';
-    g.fillRect(px(-8) - 1.5, 0, 3, 256); g.fillRect(px(8) - 1.5, 0, 3, 256);      // edges
+    g.fillRect(px(-8) - 1.5, 0, 3, 256); g.fillRect(px(8) - 1.5, 0, 3, 256);
     g.fillStyle = '#d9dbe0';
     for (const lx of [-4, 0, 4]) { const p = px(lx); for (let y = 0; y < 256; y += 54) g.fillRect(p - 1, y, 2, 30); }
     const t = new THREE.CanvasTexture(c);
@@ -447,7 +380,6 @@ const Engine = (() => {
     return new THREE.CanvasTexture(c);
   }
 
-  /* ─────────────────── procedural CAR BUILDER ─────────────────── */
   function buildCar(spec, color, finish, wheelStyle) {
     const g = new THREE.Group();
     const fin = { glossy: { m: 0.55, r: 0.28 }, metallic: { m: 0.95, r: 0.18 }, matte: { m: 0.12, r: 0.72 } }[finish || 'glossy'];
@@ -456,11 +388,9 @@ const Engine = (() => {
     const dark = std(new THREE.Color('#0b0f16'), { metalness: 0.3, roughness: 0.6 });
     const L = spec.len, W = spec.wid, H = spec.hgt, R = spec.roof;
 
-    // main body (two stacked boxes give a rounded look)
     const body = box(L, H * 0.62, W, paint); body.position.y = H * 0.32; g.add(body);
     const hood = box(L * 0.98, H * 0.42, W * 0.98, paint); hood.position.y = H * 0.7; g.add(hood);
 
-    // cabin / roof
     const roof = box(L * 0.52, R, W * 0.86, paint);
     roof.position.set(L * 0.02, H * 0.7 + R * 0.55, 0); g.add(roof);
     const windshield = box(0.06, R * 0.9, W * 0.8, glass);
@@ -470,18 +400,15 @@ const Engine = (() => {
     const sideL = box(L * 0.44, R * 0.8, 0.05, glass); sideL.position.set(0, H * 0.7 + R * 0.5, W * 0.43); g.add(sideL);
     const sideR = sideL.clone(); sideR.position.z = -W * 0.43; g.add(sideR);
 
-    // spoiler for sporty types
     if (spec.spoiler) {
       const sp = box(0.5, 0.08, W * 0.9, dark); sp.position.set(-L * 0.46, H + 0.15, 0); g.add(sp);
       const spL = box(0.1, 0.18, 0.1, dark); spL.position.set(-L * 0.46, H + 0.05, W * 0.3); g.add(spL);
       const spR = spL.clone(); spR.position.z = -W * 0.3; g.add(spR);
     }
 
-    // bumper + grille
     const frontBump = box(0.3, H * 0.3, W * 0.96, dark); frontBump.position.set(L * 0.5, H * 0.2, 0); g.add(frontBump);
     const rearBump = box(0.3, H * 0.3, W * 0.96, dark); rearBump.position.set(-L * 0.5, H * 0.2, 0); g.add(rearBump);
 
-    // headlights (white) & taillights (red)
     const headMat = std(new THREE.Color('#fff7e0'), { emissive: new THREE.Color('#fff2c0'), emissiveIntensity: 1.4, metalness: 0.4, roughness: 0.3 });
     const tailMat = std(new THREE.Color('#ff3b4e'), { emissive: new THREE.Color('#ff2436'), emissiveIntensity: 1.2, metalness: 0.3, roughness: 0.35 });
     headMats.push(headMat); tailMats.push(tailMat);
@@ -490,7 +417,6 @@ const Engine = (() => {
     const tL = box(0.1, 0.14, 0.4, tailMat); tL.position.set(-L * 0.5 - 0.02, H * 0.42, W * 0.32); g.add(tL);
     const tR = tL.clone(); tR.position.z = -W * 0.32; g.add(tR);
 
-    // wheels: steerGroup > rollGroup > tire+rim
     const rollGroups = [], steerGroups = [];
     const tireMat = std(new THREE.Color('#0c0f14'), { metalness: 0.2, roughness: 0.9 });
     const rimMat = std(new THREE.Color(wheelStyle === 'turbo' ? '#FFC94D' : wheelStyle === 'alloy' ? '#c9d3e0' : '#5a6675'),
@@ -525,7 +451,6 @@ const Engine = (() => {
     scene.add(b.group);
   }
 
-  /* ─────────────────── ENVIRONMENT objects ─────────────────── */
   function makeTree() {
     const t = new THREE.Group();
     const trunk = cyl(0.12, 0.18, 1.1, 6, std(0x5a3b22)); trunk.position.y = 0.55; t.add(trunk);
@@ -574,7 +499,6 @@ const Engine = (() => {
     return { group: b.group, rollGroups: b.rollGroups, lane: 0, speed: 12, x: 0, active: false };
   }
 
-  /* ─────────────────── ROAD CHUNK (recycled) ─────────────────── */
   function buildChunk() {
     const g = new THREE.Group();
     const road = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_HALF * 2, CHUNK),
@@ -588,7 +512,6 @@ const Engine = (() => {
     }
 
     const deco = new THREE.Group(); g.add(deco); g.userData.deco = deco;
-    // buildings both sides
     for (let i = 0; i < 4; i++) {
       for (const s of [-1, 1]) {
         const b = makeBuilding();
@@ -596,7 +519,6 @@ const Engine = (() => {
         deco.add(b.mesh);
       }
     }
-    // trees + streetlights on sidewalks
     for (let i = 0; i < 4; i++) {
       for (const s of [-1, 1]) {
         const tr = makeTree(); tr.position.set(s * (ROAD_HALF + 2.2), 0, -rand(3, CHUNK - 3)); deco.add(tr);
@@ -620,8 +542,6 @@ const Engine = (() => {
     for (const c of chunks) {
       if (c.position.z > player.group.position.z + CHUNK) {
         c.position.z = minZ - CHUNK; minZ = c.position.z;
-        // re-roll decorations for variety
-        c.userData.deco.traverse((o) => { if (o.isMesh && o.geometry && o.geometry.type === 'BoxGeometry' && o.material.map) o.rotation.y = 0; });
       }
     }
   }
@@ -643,7 +563,6 @@ const Engine = (() => {
     return g;
   }
 
-  /* ─────────────────── LIGHTING / TIME / QUALITY ─────────────────── */
   function applyTime() {
     const night = timeMode === 'night';
     const sky = night ? 0x070d1c : 0xbcd7ff;
@@ -672,7 +591,6 @@ const Engine = (() => {
     renderer.toneMappingExposure = quality === 'ultra' ? 1.15 : 1.05;
   }
 
-  /* ─────────────────── INIT ─────────────────── */
   function init(canvas) {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     renderer.outputEncoding = THREE.sRGBEncoding;
@@ -742,7 +660,6 @@ const Engine = (() => {
     });
   }
 
-  /* ─────────────────── RUN CONTROL ─────────────────── */
   function startRun(mode) {
     Game.mode = mode; Game.running = true; Game.paused = false;
     const p = player.group.position; p.set(0, 0, 0);
@@ -776,7 +693,6 @@ const Engine = (() => {
     if (Game.onRunComplete) Game.onRunComplete(summary);
   }
 
-  /* ─────────────────── PER-FRAME PHYSICS ─────────────────── */
   function stepPhysics(dt) {
     const p = player.group.position;
     const car = Game.car, st = car.stats;
@@ -785,50 +701,42 @@ const Engine = (() => {
     let speed = p.userData.speed || 0;
 
     const inp = Game.input;
-    if (inp.gas) speed += acc * dt;
+    if (inp.gas) speed += acc * dt * (Save.data.settings.ctrl || 1);
     if (inp.brake) { if (speed > 0) speed -= 26 * dt; else speed -= 4 * dt; }
     if (inp.hb) speed -= (speed > 0 ? 34 : 8) * dt;
     if (!inp.gas && !inp.brake) speed -= Math.sign(speed) * Math.min(Math.abs(speed), 1.2 * dt);
     speed = clamp(speed, -12, maxSpeed);
     p.userData.speed = speed;
-    p.z -= speed * dt;                       // forward = -z
+    p.z -= speed * dt;
     p.y = 0;
 
-    // steering (lateral)
     const steer = (inp.left ? -1 : 0) + (inp.right ? 1 : 0);
     const sf = clamp(Math.abs(speed) / 10, 0, 1) * (0.55 + 0.45 * clamp(Math.abs(speed) / maxSpeed, 0, 1));
-    p.x += steer * st.hand * 1.7 * sf * (speed < -1 ? -1 : 1) * dt * 3.2;
+    p.x += steer * st.hand * 1.7 * sf * (speed < -1 ? -1 : 1) * dt * 3.2 * (Save.data.settings.steer || 1);
     p.x = clamp(p.x, -BOUND, BOUND);
 
-    // visual heading + lean
     player.heading += (steer * 0.16 * sf - player.heading) * Math.min(1, dt * 8);
     player.group.rotation.y = player.heading;
     player.group.rotation.z += ((-steer * 0.03 * sf) - player.group.rotation.z) * Math.min(1, dt * 8);
     player.group.rotation.x += ((speed / maxSpeed) * -0.01) * dt * 4;
 
-    // wheels
     const spin = (speed / 0.34) * dt;
     for (const rg of player.rollGroups) rg.rotation.x += spin;
     for (const sg of player.steerGroups) sg.rotation.y += (steer * 0.35 - sg.rotation.y) * Math.min(1, dt * 10);
 
-    // audio engine
     AUDIO.setEngine(clamp(Math.abs(speed) / maxSpeed, 0, 1), inp.gas ? 1 : 0);
 
-    // run tracking
     if (Game.running) {
       const r = Game.run;
       r.dist += Math.max(0, speed) * dt;
       r.time += dt;
       r.maxSpeed = Math.max(r.maxSpeed, Math.abs(speed) * 3.6);
-      // parking success
       if (Game.mode && Game.mode.goal && Game.mode.goal.park && !r.park && bay) {
         if (Math.abs(p.x - 6) < 1.3 && Math.abs(p.z - (-38)) < 2.6 && Math.abs(speed) < 2) { r.park = true; }
       }
     }
 
-    // ground follows player
     ground.position.z = p.z;
-    // sun follows player so shadows stay local
     sun.position.set(p.x + 12, 26, p.z + 10);
     sun.target.position.set(p.x, 0, p.z - 6);
   }
@@ -865,7 +773,7 @@ const Engine = (() => {
       const dx = t.group.position.x - p.x, dz = t.group.position.z - p.z;
       if (dx * dx + dz * dz < 3.1 * 3.1) {
         const s = p.userData.speed || 0;
-        if (s > 6 && !t.userData.hitCd) {
+        if (s > 5 && !t.userData.hitCd) {
           t.userData.hitCd = 1.2;
           p.userData.speed = s * -0.25;
           if (Game.running) Game.run.crashes++;
@@ -899,7 +807,6 @@ const Engine = (() => {
     camera.updateProjectionMatrix();
   }
 
-  /* ─────────────────── MAIN LOOP ─────────────────── */
   function loop() {
     raf = requestAnimationFrame(loop);
     const dt = Math.min(clock.getDelta(), 0.05);
@@ -910,7 +817,6 @@ const Engine = (() => {
       stepCoins(dt);
       stepTraffic(dt);
       recycleChunks();
-      // goal auto-complete
       const goal = Game.mode.goal || {};
       if (goal.dist && Game.run.dist >= goal.dist && !(goal.coins || goal.park)) endRun();
       else if (goal.coins && Game.run.coins >= goal.coins) endRun();
@@ -922,7 +828,6 @@ const Engine = (() => {
     renderer.render(scene, camera);
   }
 
-  /* ─────────────────── PUBLIC API ─────────────────── */
   return {
     init, resize,
     setCar(id) { Game.car = carById(id); setPlayerCar(id); },
@@ -933,10 +838,8 @@ const Engine = (() => {
     isRunning() { return Game.running; }
   };
 })();
-/* ════════════════════════════════════════════════════════════════
-   PART 3 : UI · GARAGE · PROFILE · CONTROLS · INIT
-   ════════════════════════════════════════════════════════════════ */
 
+/* ══════════════════════════ 6. UI & CONTROLS ══════════════════════════ */
 const COIN_VALUE = 5;
 let currentScreen = null;
 let lastMode = null;
@@ -945,7 +848,6 @@ let inGame = false;
 let garageSel = Save.data.selectedCar;
 let pfDraft = null;
 
-/* ─────────── toast queue ─────────── */
 const Toast = (() => {
   let busy = false, queue = [];
   function show(ico, name, desc) {
@@ -956,28 +858,22 @@ const Toast = (() => {
     $('#ach-desc').textContent = desc || '';
     const t = $('#ach-toast');
     t.hidden = false;
-    setTimeout(() => {
-      t.hidden = true; busy = false;
-      if (queue.length) show(...queue.shift());
-    }, 2900);
+    setTimeout(() => { t.hidden = true; busy = false; if (queue.length) show(...queue.shift()); }, 2900);
   }
   return { show };
 })();
 
-/* ─────────── screen router ─────────── */
 function showScreen(name) {
   currentScreen = name;
   $$('.screen').forEach((s) => s.classList.remove('active'));
   if (name) $('#screen-' + name).classList.add('active');
 }
 
-/* ─────────── menu ─────────── */
 function refreshMenu() {
   $('#menu-coins').textContent = fmtN(Save.data.coins);
   $('#menu-car-name').textContent = carById(Save.data.selectedCar).name;
 }
 
-/* ─────────── modes / missions ─────────── */
 function renderModes() {
   const list = $('#mode-list');
   list.innerHTML = '';
@@ -994,7 +890,6 @@ function renderModes() {
   });
 }
 
-/* ─────────── RUN LIFECYCLE ─────────── */
 function beginRun(mode) {
   if (typeof THREE === 'undefined') { Toast.show('⚠️', '3D ENGINE READY NAHI', 'Internet check karo, page refresh karo'); return; }
   lastMode = mode;
@@ -1088,22 +983,21 @@ function showSummary(s) {
   const m = s.mode;
   $('#sum-title').textContent = s.complete ? '🏆 ' + m.name + ' — COMPLETE' : '🏁 RUN COMPLETE';
   const rows = [
-    ['Distance', fmtDist(s.dist), s.goalDoneDist],
-    ['Coins collected', '🪙 ' + s.coins, null],
-    ['Crashes', s.crashes + (s.crashes === 0 ? ' 🛡️' : ''), s.crashes === 0 ? true : (s.mode.goal && s.mode.goal.noCrash ? false : null)],
-    ['Time', fmtTime(s.time), null],
-    ['Parking', s.park ? '✅ Parked' : '—', s.park || null]
+    ['Distance', fmtDist(s.dist)],
+    ['Coins collected', '🪙 ' + s.coins],
+    ['Crashes', s.crashes + (s.crashes === 0 ? ' 🛡️' : '')],
+    ['Time', fmtTime(s.time)],
+    ['Parking', s.park ? '✅ Parked' : '—']
   ];
-  if (s.complete && s.reward) rows.push(['Mission reward', '🪙 +' + fmtN(s.reward), true]);
+  if (s.complete && s.reward) rows.push(['Mission reward', '🪙 +' + fmtN(s.reward)]);
   $('#sum-rows').innerHTML = rows.filter((r) => r[1] !== '—').map(
-    (r) => '<div class="srow' + (r[2] === true ? ' ok' : r[2] === false ? ' no' : '') + '"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>'
+    (r) => '<div class="srow"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>'
   ).join('');
   $('#sum-score').textContent = fmtN(s.score);
   $('#summary').hidden = false;
   AUDIO.go();
 }
 
-/* ─────────── DAILY CHALLENGE ─────────── */
 function dailyGoalMet(p, g) {
   return (!g.coins || p.coins >= g.coins) && (!g.dist || p.dist >= g.dist) && (!g.noCrash || !p.crashed);
 }
@@ -1134,7 +1028,6 @@ $('#btn-daily-claim').onclick = () => {
   refreshMenu();
 };
 
-/* ─────────── GARAGE ─────────── */
 function renderGarage() {
   $('#garage-coins').textContent = fmtN(Save.data.coins);
   const list = $('#garage-list');
@@ -1234,7 +1127,6 @@ function renderCust(c, owned) {
   });
 }
 
-/* ─────────── MY CARS ─────────── */
 function renderMyCars() {
   $('#mycars-coins').textContent = fmtN(Save.data.coins);
   const list = $('#mycars-list');
@@ -1256,7 +1148,6 @@ function renderMyCars() {
   });
 }
 
-/* ─────────── HISTORY ─────────── */
 function totCell(ico, val, label, gold) {
   return '<div class="tot' + (gold ? ' gold' : '') + '"><b>' + ico + ' ' + val + '</b><span>' + label + '</span></div>';
 }
@@ -1282,7 +1173,6 @@ function renderHistory() {
   }).join('');
 }
 
-/* ─────────── PROFILE ─────────── */
 function renderProfile() {
   const hasP = !!Save.data.profile;
   $('#profile-guest').hidden = hasP;
@@ -1361,7 +1251,6 @@ function renderPFForm() {
   });
 }
 
-/* ─────────── SETTINGS ─────────── */
 function loadSettings() {
   const s = Save.data.settings;
   $('#set-quality').value = s.quality;
@@ -1374,7 +1263,6 @@ function loadSettings() {
 }
 const setDebouncedSave = debounce(() => { Save.save(); refreshMenu(); }, 250);
 
-/* ─────────── HUD ─────────── */
 const H = {};
 function bindHUD() {
   H.coins = $('#hud-coins'); H.speed = $('#hud-speed'); H.bar = $('#hud-speed-bar');
@@ -1408,7 +1296,6 @@ function bindHUD() {
   };
 }
 
-/* ─────────── PAUSE ─────────── */
 function togglePause() {
   if (!inGame) return;
   Game.paused = !Game.paused;
@@ -1416,7 +1303,6 @@ function togglePause() {
   $('#pause-menu').hidden = !Game.paused;
 }
 
-/* ─────────── CONTROLS ─────────── */
 function bindControls() {
   const keyMap = { w: 'gas', arrowup: 'gas', s: 'brake', arrowdown: 'brake', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right', ' ': 'hb' };
   window.addEventListener('keydown', (e) => {
@@ -1451,7 +1337,6 @@ function bindControls() {
   document.addEventListener('visibilitychange', () => { if (document.hidden && inGame && !Game.paused) togglePause(); });
 }
 
-/* ─────────── MENU / NAV WIRING ─────────── */
 function bindUI() {
   $$('.pbtn').forEach((b) => b.addEventListener('click', () => AUDIO.click()));
 
@@ -1469,7 +1354,6 @@ function bindUI() {
   $('#btn-about').onclick = () => showScreen('about');
   $('#btn-about-back').onclick = () => showScreen('menu');
 
-  /* garage actions */
   $('#btn-garage-buy').onclick = () => {
     const c = carById(garageSel);
     if (c.price === 0) return;
@@ -1494,7 +1378,6 @@ function bindUI() {
     renderGarage(); refreshMenu();
   };
 
-  /* history reset */
   $('#btn-reset-data').onclick = () => {
     if (!confirm('Pura game data reset karein? Coins, cars, history — SAB delete. Ye undo nahi ho sakta.')) return;
     Save.reset();
@@ -1504,7 +1387,6 @@ function bindUI() {
     Toast.show('🗑️', 'DATA RESET', 'Nayi shuruaat. All the best!');
   };
 
-  /* profile */
   $('#btn-pf-create-open').onclick = () => openProfileForm(false);
   $('#btn-pf-back-guest').onclick = () => showScreen('menu');
   $('#btn-pf-back').onclick = () => showScreen('menu');
@@ -1527,7 +1409,6 @@ function bindUI() {
     renderProfile();
   };
 
-  /* settings */
   $('#set-quality').onchange = (e) => {
     Save.data.settings.quality = e.target.value;
     Engine.setQuality(e.target.value);
@@ -1549,7 +1430,6 @@ function bindUI() {
   $('#set-ctrl').oninput = (e) => { Save.data.settings.ctrl = +e.target.value; setDebouncedSave(); };
   $('#set-steer').oninput = (e) => { Save.data.settings.steer = +e.target.value; setDebouncedSave(); };
 
-  /* pause + summary */
   $('#btn-resume').onclick = togglePause;
   $('#btn-restart').onclick = () => {
     Game.paused = false; Engine.setPaused(false);
@@ -1566,18 +1446,17 @@ function bindUI() {
   $('#btn-sum-menu').onclick = exitToMenu;
 }
 
-/* ─────────── INIT ─────────── */
 function init() {
   Save.load();
   if (typeof THREE !== 'undefined') {
-    Engine.init($('#gl'));
+    Engine.init($('canvas#gl'));
     setTimeout(() => {
       const l = $('#loading');
       l.classList.add('hide');
       setTimeout(() => l.remove(), 700);
     }, 1000);
   } else {
-    /* THREE load fail — loading screen par hi error dikhta hai (Engine stub ne dikha diya) */
+    $('#load-error').hidden = false;
   }
   bindUI();
   bindHUD();
